@@ -1,0 +1,8 @@
+model {
+    Favourite f
+}
+
+json {
+    sku f.sku
+    purchaseCount f.purchaseCount
+}

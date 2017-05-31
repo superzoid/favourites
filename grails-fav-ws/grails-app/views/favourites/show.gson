@@ -1,0 +1,10 @@
+import grails.fav.ws.Favourites
+
+model {
+    Favourites favourites
+}
+
+json {
+	customerNo favourites.customerNo
+	favs g.render(favourites.favs,[ excludes:['id']])
+}
