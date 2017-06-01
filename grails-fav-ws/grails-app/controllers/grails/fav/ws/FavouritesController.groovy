@@ -19,12 +19,7 @@ class FavouritesController extends RestfulController{
     def index() {}
 
     private getFavs(String id) {
-        def favs = memcacheClient.get(id)
-        if(favs != null) {
-            return favs
-        }
-        
-       return null
+        memcacheClient.get(id)
     }
 
     @Override
