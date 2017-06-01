@@ -6,8 +6,10 @@ import net.spy.memcached.MemcachedClient
 
 class FavouritesController extends RestfulController{
     static int fiveMinutes = 60*5
+    def memcachedServer = System.getProperty("memcached.server", "localhost")
+    def memcachedPort = Integer.parseInt(System.getProperty("memcached.port", "11211"))
 
-    def memcacheClient = new MemcachedClient(new InetSocketAddress("localhost", 11211))
+    def memcacheClient = new MemcachedClient(new InetSocketAddress(memcachedServer, memcachedPort))
     def gson = new Gson()
 
     FavouritesController() {
