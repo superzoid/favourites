@@ -5,7 +5,7 @@ import groovy.transform.ToString
 
 @ToString(includeNames = true, includeFields = true, excludes = "id")
 @EqualsAndHashCode
-class Favourites {
+class Favourites implements Serializable{
     static hasMany = [favs: Favourite]
     List favs
     String customerNo

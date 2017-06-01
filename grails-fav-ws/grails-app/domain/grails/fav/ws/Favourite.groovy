@@ -5,7 +5,7 @@ import groovy.transform.ToString
 
 @ToString(includeNames = true, includeFields = true)
 @EqualsAndHashCode
-class Favourite {
+class Favourite  implements Serializable{
 
     String sku
     Integer purchaseCount
