@@ -2,9 +2,6 @@ package service
 
 import java.util.concurrent.TimeUnit.SECONDS
 import javax.inject._
-
-import monix.execution.CancelableFuture
-
 import scala.concurrent.Future
 import shade.memcached._
 
