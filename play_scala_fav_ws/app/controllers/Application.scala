@@ -1,27 +1,26 @@
 package controllers
 
-import model._
-import play.api.cache._
-import play.api.libs.json._
-import play.api.mvc._
 import javax.inject.Inject
 
-class Application @Inject() (cache: CacheApi) extends Controller {
+import model._
+import play.api.libs.json._
+import play.api.mvc._
+import service.CacheService
+
+class Application @Inject() (cache: CacheService) extends Controller {
   implicit val favouriteWrites: Writes[Favourite] = Json.writes[Favourite]
   implicit val favouritesWrites: Writes[Favourites] = Json.writes[Favourites]
   implicit val favouriteFormat: Format[Favourite] = Json.format[Favourite]
   implicit val favouritesFormat: Format[Favourites] = Json.format[Favourites]
-
-  cache.set("andy", Favourites(customerNo = "andy", List(Favourite("1",1), Favourite("2",1))))
 
   def index = Action {
     Ok(views.html.index("Your new application is ready."))
   }
 
   def get(customerNo: String) = Action {
-    val maybeFavourites: Option[Favourites] = cache.get(customerNo)
+    val maybeFavourites: Option[String] = cache.get(customerNo)
     maybeFavourites match {
-      case Some(favourites) => Ok(Json.toJson(favourites))
+      case Some(favourites) => Ok(Json.parse(favourites))
       case None => NotFound
     }
   }
@@ -32,7 +31,8 @@ class Application @Inject() (cache: CacheApi) extends Controller {
         val favouritesFromJson: JsResult[Favourites] = Json.fromJson[Favourites](request.body)
         favouritesFromJson match {
           case JsSuccess(f: Favourites,_) => {
-            cache.set(f.customerNo, f)
+            cache.remove(f.customerNo)
+            cache.set(f.customerNo, request.body.toString())
             Ok
           }
           case e: JsError => BadRequest
@@ -45,21 +45,19 @@ class Application @Inject() (cache: CacheApi) extends Controller {
   def post: Action[JsValue] = Action(parse.json) { request =>
     val favouritesFromJson: JsResult[Favourites] = Json.fromJson[Favourites](request.body)
     favouritesFromJson match {
-      case JsSuccess(f: Favourites, path: JsPath) => {
-        cache.set(f.customerNo, f)
+      case JsSuccess(f: Favourites, path: JsPath) =>
+        cache.set(f.customerNo, request.body.toString())
         Created
-      }
       case JsError(_) => BadRequest
     }
   }
 
   def delete(customerNo: String) = Action {
-    val maybeFavourites: Option[Favourites] = cache.get(customerNo)
+    val maybeFavourites: Option[String] = cache.get(customerNo)
     maybeFavourites match {
-      case Some(_) => {
+      case Some(_) =>
         cache.remove(customerNo)
         NoContent
-      }
       case None => NotFound
     }
   }
