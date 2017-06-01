@@ -7,6 +7,10 @@ import play.api.libs.json._
 import play.api.mvc._
 import service.CacheService
 
+import scala.util.{Failure, Success}
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
+
 class Application @Inject() (cache: CacheService) extends Controller {
   implicit val favouriteWrites: Writes[Favourite] = Json.writes[Favourite]
   implicit val favouritesWrites: Writes[Favourites] = Json.writes[Favourites]
@@ -17,48 +21,58 @@ class Application @Inject() (cache: CacheService) extends Controller {
     Ok(views.html.index("Your new application is ready."))
   }
 
-  def get(customerNo: String) = Action {
-    val maybeFavourites: Option[String] = cache.get(customerNo)
-    maybeFavourites match {
-      case Some(favourites) => Ok(Json.parse(favourites))
+  def get(customerNo: String) = Action.async {
+    val futureMaybeFavourites = cache.get(customerNo)
+
+    val res:Future[Result] = futureMaybeFavourites.map {
+      case Some(favs) => Ok(Json.parse(favs))
       case None => NotFound
-    }
+    }.recover{case _ => InternalServerError}
+
+    res
   }
 
-  def put(customerNo: String): Action[JsValue] = Action(parse.json) { request =>
-    cache.get(customerNo) match {
+  def put(customerNo: String) = Action.async(parse.json) { request =>
+    val futureMaybeFavourites = cache.get(customerNo)
+
+    val res: Future[Result] = futureMaybeFavourites.map{
       case Some(_) => {
-        val favouritesFromJson: JsResult[Favourites] = Json.fromJson[Favourites](request.body)
-        favouritesFromJson match {
-          case JsSuccess(f: Favourites,_) => {
-            cache.remove(f.customerNo)
-            cache.set(f.customerNo, request.body.toString())
-            Ok
-          }
-          case e: JsError => BadRequest
-        }
+        cache.remove(customerNo)
+        cache.set(customerNo, request.body.toString())
+        Ok
       }
       case None => NotFound
-    }
+    }.recover{case _ => InternalServerError}
+
+    res
   }
 
-  def post: Action[JsValue] = Action(parse.json) { request =>
+  def post = Action.async(parse.json) { request =>
     val favouritesFromJson: JsResult[Favourites] = Json.fromJson[Favourites](request.body)
     favouritesFromJson match {
       case JsSuccess(f: Favourites, path: JsPath) =>
-        cache.set(f.customerNo, request.body.toString())
-        Created
-      case JsError(_) => BadRequest
+        val cancelableFuture = cache.set(f.customerNo, request.body.toString())
+        cancelableFuture.map{ set =>
+          if(set) {
+            Created
+          } else {
+            InternalServerError
+          }
+        }.recover{case _ => InternalServerError}
+      case JsError(_) => Future{BadRequest}
     }
   }
 
-  def delete(customerNo: String) = Action {
-    val maybeFavourites: Option[String] = cache.get(customerNo)
-    maybeFavourites match {
+  def delete(customerNo: String) = Action.async {
+    val futureMaybeFavourites = cache.get(customerNo)
+    val res: Future[Result] = futureMaybeFavourites.map{
       case Some(_) =>
         cache.remove(customerNo)
         NoContent
       case None => NotFound
+    }.recover{
+      case _ => InternalServerError
     }
+    res
   }
 }

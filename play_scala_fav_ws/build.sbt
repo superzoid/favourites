@@ -6,7 +6,7 @@ lazy val `play_scala_fav_ws` = (project in file(".")).enablePlugins(PlayScala)
 
 scalaVersion := "2.11.7"
 
-libraryDependencies ++= Seq( jdbc , cache , ws   , specs2 % Test , "net.spy" % "spymemcached" % "2.11.7")
+libraryDependencies ++= Seq( jdbc , cache , ws   , specs2 % Test , "io.monix" %% "shade" % "1.9.5")
 
 unmanagedResourceDirectories in Test <+=  baseDirectory ( _ /"target/web/public/test" )  
 
