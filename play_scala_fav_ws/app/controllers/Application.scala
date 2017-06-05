@@ -7,9 +7,9 @@ import play.api.libs.json._
 import play.api.mvc._
 import service.CacheService
 
-import scala.util.{Failure, Success}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import play.api.Logger
 
 class Application @Inject() (cache: CacheService) extends Controller {
   implicit val favouriteWrites: Writes[Favourite] = Json.writes[Favourite]
@@ -22,29 +22,37 @@ class Application @Inject() (cache: CacheService) extends Controller {
   }
 
   def get(customerNo: String) = Action.async {
+    Logger info s"Getting favourites for $customerNo"
     val futureMaybeFavourites = cache.get(customerNo)
 
     val res:Future[Result] = futureMaybeFavourites.map {
       case Some(favs) => Ok(Json.parse(favs))
+      case None => NotFound
+    }.recover{case e: Exception => {
+      Logger.error(s"Cannot get favourites fo $customerNo", e)
+      InternalServerError
+    }}
+
+    res
+  }
+
+  def put(customerNo: String) = Action.async(parse.json) { request =>
+    val body = request.body.toString()
+    Logger info s"Adding json : $body"
+    val futureMaybeFavourites = cache get customerNo
+
+    val res: Future[Result] = futureMaybeFavourites.map{
+      case Some(_) => updateFavourites(customerNo, body)
       case None => NotFound
     }.recover{case _ => InternalServerError}
 
     res
   }
 
-  def put(customerNo: String) = Action.async(parse.json) { request =>
-    val futureMaybeFavourites = cache.get(customerNo)
-
-    val res: Future[Result] = futureMaybeFavourites.map{
-      case Some(_) => {
-        cache.remove(customerNo)
-        cache.set(customerNo, request.body.toString())
-        Ok
-      }
-      case None => NotFound
-    }.recover{case _ => InternalServerError}
-
-    res
+  def updateFavourites(customerNo:String, json: String): Status = {
+    cache remove customerNo
+    cache.set(customerNo, json)
+    Ok
   }
 
   def post = Action.async(parse.json) { request =>
@@ -64,10 +72,10 @@ class Application @Inject() (cache: CacheService) extends Controller {
   }
 
   def delete(customerNo: String) = Action.async {
-    val futureMaybeFavourites = cache.get(customerNo)
+    val futureMaybeFavourites = cache get customerNo
     val res: Future[Result] = futureMaybeFavourites.map{
       case Some(_) =>
-        cache.remove(customerNo)
+        cache remove customerNo
         NoContent
       case None => NotFound
     }.recover{
