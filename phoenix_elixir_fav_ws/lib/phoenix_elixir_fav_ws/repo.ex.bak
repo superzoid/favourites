@@ -1,0 +1,3 @@
+defmodule PhoenixElixirFavWs.Repo do
+  use Ecto.Repo, otp_app: :phoenix_elixir_fav_ws
+end
